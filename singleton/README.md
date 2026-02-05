@@ -8,6 +8,11 @@
 
 ## The Problem (Why do we need this?)
 
+> **⚠️ Note:** This document uses a "shopping cart" as an example because it's easy to understand.
+> However, **a shopping cart is NOT a good real-world use case for Singleton**.
+> In real applications, each user needs their own cart — a Singleton cart would be shared by ALL users!
+> For proper Singleton use cases, see [Real-World Use Cases](#real-world-use-cases-with-code-examples) (Logger, Config, Database Pool).
+
 Imagine you're building a shopping website.
 
 You have a shopping cart. But what if your code accidentally creates multiple carts?
@@ -100,6 +105,8 @@ class UserCart {
 
 ## Complete Example
 
+> **⚠️ Reminder:** UserCart is for learning only. In production, use Singleton for Logger, Config, etc. — not shopping carts.
+
 ```typescript
 class UserCart {
   // 1. Store the single instance
@@ -136,6 +143,8 @@ cart.add("Apple");
 ---
 
 ## Visual Explanation
+
+> **⚠️ Reminder:** Cart is used here for simplicity. See [Real-World Use Cases](#real-world-use-cases-with-code-examples) for proper examples.
 
 ```
 WITHOUT Singleton:
@@ -407,38 +416,76 @@ expect(fakeDb.savedOrders).toContain(order); // ✅
 
 ### Anti-Pattern 2: Global State Nightmare
 
-**Bad - Singleton as global variable:**
+> **⚠️ Note:** This example uses a Cart, but remember: a shopping cart should NOT be a Singleton in real apps (each user needs their own cart). This is just to illustrate the "global state" problem.
+
+**The Problem: Anyone can modify the Singleton from anywhere**
+
 ```typescript
-// File: cart.ts
-class Cart {
-  private static instance: Cart;
-  items: Item[] = [];
-
-  static getInstance() { /* ... */ }
-  add(item: Item) { this.items.push(item); }
-  clear() { this.items = []; }
-}
-
 // File: checkout.ts
 function checkout() {
   const cart = Cart.getInstance();
   processPayment(cart.items);
-  cart.clear(); // 😱 Clears the cart!
+  cart.clear(); // Clears the cart
 }
 
 // File: analytics.ts
 function trackCart() {
   const cart = Cart.getInstance();
-  // 😱 Sometimes cart is empty (after checkout)
-  // Sometimes cart has items
-  // UNPREDICTABLE!
-  sendAnalytics(cart.items);
+  sendAnalytics(cart.items); // What's in here? Depends on timing!
 }
-
-// Debugging is impossible because ANYONE can modify the cart from ANYWHERE
 ```
 
+When you read `analytics.ts` alone, you can't know what `cart.items` contains.
+You have to read ALL files that use `Cart.getInstance()` to understand the state.
+
+```
+checkout.ts  ──→ Cart.getInstance() ──→ clear()
+analytics.ts ──→ Cart.getInstance() ──→ items???
+display.ts   ──→ Cart.getInstance() ──→ items???
+                      ↑
+              Who changed it last?
+              What's the current state?
+              You can't tell without reading everything!
+```
+
+**The Solution: Pass dependencies explicitly**
+
+```typescript
+// File: main.ts - The ONLY place that manages cart
+const cart = new Cart();
+cart.add(apple);
+cart.add(banana);
+
+trackCart(cart);   // Pass cart to analytics
+checkout(cart);    // Pass cart to checkout
+
+// Now you can see: trackCart runs first, then checkout
+```
+
+```typescript
+// File: checkout.ts
+function checkout(cart: Cart) {  // Receives cart as parameter
+  processPayment(cart.items);
+  cart.clear();
+}
+
+// File: analytics.ts
+function trackCart(cart: Cart) {  // Receives cart as parameter
+  sendAnalytics(cart.items);
+}
+```
+
+**Why is this better?**
+
+| Singleton | Explicit passing |
+|-----------|------------------|
+| Any file can call `getInstance()` | Only main.ts has the cart |
+| Order of operations is hidden | Order is visible in main.ts |
+| Must read all files to understand state | Read main.ts to see the flow |
+
 ### Anti-Pattern 3: Testing Pollution
+
+> **⚠️ Note:** Again, Cart is used here for illustration only. In real apps, use Singleton for things like Logger or Config, not shopping carts.
 
 **Bad - Tests affect each other:**
 ```typescript
@@ -491,6 +538,29 @@ class EmailService {
 }
 ```
 
+**Good - Accept config as a parameter:**
+```typescript
+class EmailService {
+  constructor(private config: Config) {}  // ✅ Inject dependency
+
+  sendWelcomeEmail(user: User) {
+    const template = this.config.get("email.welcomeTemplate");
+    // Now you can pass different configs!
+  }
+}
+
+// Production:
+const emailService = new EmailService(Config.getInstance());
+
+// Testing:
+const testConfig = new MockConfig({ "email.welcomeTemplate": "test.html" });
+const emailService = new EmailService(testConfig);  // ✅ Easy to test!
+
+// Different environment:
+const stagingConfig = new Config("staging-settings.json");
+const emailService = new EmailService(stagingConfig);  // ✅ Flexible!
+```
+
 ### Anti-Pattern 5: Lazy Initialization Race Condition
 
 **Bad - Not thread-safe (in multi-threaded languages):**
@@ -513,7 +583,40 @@ class DatabasePool {
 }
 ```
 
-Note: JavaScript is single-threaded, so this is less of a problem. But it matters in Java, C#, Go, etc.
+**Good - Eager initialization (create at load time):**
+```typescript
+class DatabasePool {
+  // ✅ Instance is created when class is loaded
+  // No race condition possible!
+  private static instance: DatabasePool = new DatabasePool();
+
+  private constructor() {}
+
+  static getInstance(): DatabasePool {
+    return DatabasePool.instance;  // Just return, no check needed
+  }
+}
+```
+
+**Good - Thread-safe in other languages (Java example):**
+```java
+class DatabasePool {
+    private static volatile DatabasePool instance;
+
+    static DatabasePool getInstance() {
+        if (instance == null) {
+            synchronized (DatabasePool.class) {  // ✅ Lock
+                if (instance == null) {          // ✅ Double-check
+                    instance = new DatabasePool();
+                }
+            }
+        }
+        return instance;
+    }
+}
+```
+
+> **Note:** JavaScript is single-threaded, so race conditions are rare. But this matters in Java, C#, Go, Rust, etc.
 
 ---
 
@@ -615,8 +718,9 @@ export { db };
 
 | Situation | Why Singleton Fails |
 |-----------|-------------------|
-| **Business Logic** | Hidden dependencies, hard to test |
+| **Shopping Cart** | Each user needs their own cart! |
 | **User-specific data** | Each user needs own instance |
+| **Business Logic** | Hidden dependencies, hard to test |
 | **Stateless services** | No need for single instance |
 | **Things that need mocking** | Can't replace for tests |
 
