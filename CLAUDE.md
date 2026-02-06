@@ -52,6 +52,7 @@ When studying, you can ask Claude:
 | Pattern | Category | Status |
 |---------|----------|--------|
 | Singleton | Creational | ✅ Complete |
+| Factory | Creational | ✅ Complete |
 
 ## Learning Tips
 
