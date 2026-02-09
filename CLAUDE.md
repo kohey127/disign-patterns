@@ -54,6 +54,7 @@ When studying, you can ask Claude:
 | Singleton | Creational | ✅ Complete |
 | Factory | Creational | ✅ Complete |
 | Abstract Factory | Creational | ✅ Complete |
+| Strategy | Behavioral | ✅ Complete |
 
 ## Learning Tips
 
