@@ -14,7 +14,6 @@ import {
   MacUIFactory,
   getUIFactory,
 } from "./UIFactory";
-import { Button, Checkbox, TextInput } from "./Products";
 
 // ============================================
 // CLIENT CODE
