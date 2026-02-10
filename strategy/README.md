@@ -556,6 +556,71 @@ navigator.setStrategy(strategy);
 
 ---
 
+## Alternative: Without the Context Class
+
+The Context class (like `Navigator`) is **not required**. You can use a plain function that selects the right strategy based on some condition — for example, a user's properties.
+
+### Example: Function-Based Strategy Selection
+
+```typescript
+interface User {
+  id: string;
+  isPremium: boolean;
+}
+
+// A function that picks the strategy based on user properties
+function getNavigator(user: User): (origin: string, dest: string) => RouteResult {
+  if (user.isPremium) {
+    const strategy = new FastestRouteStrategy();
+    return (origin, dest) => strategy.calculateRoute(origin, dest);
+  } else {
+    const strategy = new ShortestRouteStrategy();
+    return (origin, dest) => strategy.calculateRoute(origin, dest);
+  }
+}
+
+// Usage
+const navigate = getNavigator(currentUser);
+navigate("Tokyo", "Kamakura");
+// No Context class needed!
+```
+
+You can go even further and drop the strategy classes entirely:
+
+```typescript
+function getNavigator(user: User): (origin: string, dest: string) => RouteResult {
+  if (user.isPremium) {
+    return (origin, dest) => ({
+      path: [origin, "Highway", dest],
+      distanceKm: 65,
+      estimatedMinutes: 50,
+      description: `Highway route from ${origin} to ${dest}.`,
+    });
+  } else {
+    return (origin, dest) => ({
+      path: [origin, "Local road", dest],
+      distanceKm: 52,
+      estimatedMinutes: 90,
+      description: `Local route from ${origin} to ${dest}.`,
+    });
+  }
+}
+```
+
+This is **not the classic Strategy pattern** anymore (no interface, no concrete classes, no context). But the **core idea is the same**: picking a different algorithm based on a condition.
+
+### When is the Context class worth it?
+
+| Use a plain function when... | Use a Context class when... |
+|---|---|
+| Strategy is chosen once and doesn't change | Strategy needs to be **swapped at runtime** (`setStrategy()`) |
+| No extra state is needed | Context holds **its own state** (route history, cache, etc.) |
+| Logic is simple and stateless | Switching strategies requires **extra logic** (logging, validation) |
+
+**Rule of thumb:** If the strategy is decided once (e.g., based on a user flag) and never changes, a function is simpler and perfectly fine.
+
+---
+
 ## When to Use Strategy?
 
 ### Use Strategy When...
