@@ -55,6 +55,7 @@ When studying, you can ask Claude:
 | Factory | Creational | ✅ Complete |
 | Abstract Factory | Creational | ✅ Complete |
 | Strategy | Behavioral | ✅ Complete |
+| Observer | Behavioral | ✅ Complete |
 
 ## Learning Tips
 
