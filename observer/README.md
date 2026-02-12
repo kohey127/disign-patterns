@@ -18,29 +18,29 @@ Make sure you understand basic interfaces and classes in TypeScript first!
 
 ## The Problem (Why do we need this?)
 
-Imagine you're building a YouTube-like video platform.
+Imagine you're building a messaging app like Slack.
 
-When a channel uploads a new video, many things need to happen:
-- **Subscribers** get a notification
-- **Watch Later users** add it to their queue
-- **Discord bots** post an announcement in a server
+When someone posts a message in a channel, many things need to happen:
+- **Desktop app** shows the message on screen
+- **Mobile app** sends a push notification
+- **Bots** check for keywords and auto-reply
 
 **The naive approach:**
 
 ```typescript
-function uploadVideo(channel: Channel, title: string) {
-  // Save the video...
-  saveVideo(channel, title);
+function postMessage(channel: Channel, text: string) {
+  // Save the message...
+  saveMessage(channel, text);
 
   // Now manually notify everyone
-  for (const user of getAllRegularUsers(channel)) {
-    sendPushNotification(user, title);
+  for (const pc of getAllDesktopUsers(channel)) {
+    showOnScreen(pc, text);
   }
-  for (const user of getAllWatchLaterUsers(channel)) {
-    addToWatchLater(user, title);
+  for (const phone of getAllMobileUsers(channel)) {
+    sendPushNotification(phone, text);
   }
   for (const bot of getAllBots(channel)) {
-    bot.postToDiscord(title);
+    bot.checkKeywords(text);
   }
   // What if we add email notifications? Modify this function again...
 }
@@ -48,11 +48,11 @@ function uploadVideo(channel: Channel, title: string) {
 
 **Problems:**
 
-1. **Tightly coupled** — The channel knows about every type of subscriber
-2. **Hard to extend** — Adding a new notification type means changing the upload function
+1. **Tightly coupled** — The channel knows about every type of member
+2. **Hard to extend** — Adding a new notification type means changing the post function
 3. **Violates Open/Closed Principle** — You must change existing code to add new behavior
 4. **Hard to test** — Can't test notification logic in isolation
-5. **No dynamic subscription** — Can't easily subscribe/unsubscribe at runtime
+5. **No dynamic membership** — Can't easily join/leave at runtime
 
 ---
 
@@ -61,28 +61,28 @@ function uploadVideo(channel: Channel, title: string) {
 Define a common interface for all observers, and let the subject manage a list of them.
 
 ```typescript
-// Observer interface - all subscribers share this shape
+// Observer interface - all members share this shape
 interface Observer {
-  update(event: VideoEvent): void;
+  onMessage(message: SlackMessage): void;
 }
 
 // Subject manages observers and notifies them
-class YouTubeChannel {
+class SlackChannel {
   private observers: Observer[] = [];
 
-  subscribe(observer: Observer) {
+  join(observer: Observer) {
     this.observers.push(observer);
   }
 
-  unsubscribe(observer: Observer) {
+  leave(observer: Observer) {
     this.observers = this.observers.filter(o => o !== observer);
   }
 
-  uploadVideo(title: string) {
-    // ... save video ...
+  postMessage(sender: string, text: string) {
+    const message = { channelName: this.name, sender, text };
     // Notify all observers
     for (const observer of this.observers) {
-      observer.update({ channelName: this.name, videoTitle: title });
+      observer.onMessage(message);
     }
   }
 }
@@ -91,22 +91,24 @@ class YouTubeChannel {
 **Now adding a new observer type is easy:**
 
 ```typescript
-class RegularUser implements Observer {
-  update(event: VideoEvent) {
-    console.log(`Watching "${event.videoTitle}" now!`);
+class DesktopApp implements Observer {
+  onMessage(message: SlackMessage) {
+    console.log(`New message on screen: ${message.text}`);
   }
 }
 
-class DiscordBot implements Observer {
-  update(event: VideoEvent) {
-    console.log(`Posted "${event.videoTitle}" to Discord.`);
+class SlackBot implements Observer {
+  onMessage(message: SlackMessage) {
+    if (message.text.includes("help")) {
+      console.log("Bot: How can I help you?");
+    }
   }
 }
 
-// Subscribe - the channel doesn't care WHO is listening
-channel.subscribe(new RegularUser("Alice"));
-channel.subscribe(new DiscordBot("MyBot"));
-channel.uploadVideo("New Tutorial"); // Both get notified!
+// Join the channel - the channel doesn't care WHO is listening
+channel.join(new DesktopApp("Alice"));
+channel.join(new SlackBot("HelpBot"));
+channel.postMessage("Bob", "I need help!"); // Both get notified!
 ```
 
 ---
@@ -115,38 +117,38 @@ channel.uploadVideo("New Tutorial"); // Both get notified!
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│          YouTubeChannel (Subject)                   │
-│                                                     │
-│   - observers: Observer[]                           │
-│   + subscribe(observer)                             │
-│   + unsubscribe(observer)                           │
-│   + notify() → calls update() on each observer      │
-│   + uploadVideo(title) → triggers notify()          │
-└──────────────────────┬──────────────────────────────┘
+│          SlackChannel (Subject)                      │
+│                                                      │
+│   - observers: Observer[]                            │
+│   + join(observer)                                   │
+│   + leave(observer)                                  │
+│   + notifyAll() → calls onMessage() on each observer │
+│   + postMessage(sender, text) → triggers notifyAll() │
+└──────────────────────┬───────────────────────────────┘
                        │ notifies
                        ▼
           ┌────────────────────────┐
           │   Observer             │
           │   (interface)          │
           │                        │
-          │  + update(event)       │
+          │  + onMessage(message)  │
           │  + getName()           │
           └────────────────────────┘
             ▲          ▲          ▲
             │          │          │
    ┌────────┴──┐ ┌────┴─────┐ ┌─┴──────────┐
-   │ Regular   │ │ WatchLat │ │ Notif.     │
-   │ User      │ │ er User  │ │ Bot        │
+   │ Desktop   │ │ Mobile   │ │ Slack      │
+   │ App       │ │ App      │ │ Bot        │
    ├───────────┤ ├──────────┤ ├────────────┤
-   │ Watches   │ │ Saves to │ │ Logs to    │
-   │ right away│ │ queue    │ │ Discord    │
+   │ Shows msg │ │ Push     │ │ Auto-reply │
+   │ on screen │ │ notif.   │ │ on keyword │
    └───────────┘ └──────────┘ └────────────┘
 
 KEY INSIGHT:
-- The channel doesn't know WHO is subscribed
-- It just calls update() on each observer
+- The channel doesn't know WHO is listening
+- It just calls onMessage() on each observer
 - Observers can join or leave at any time
-- Each observer reacts DIFFERENTLY to the same event
+- Each observer reacts DIFFERENTLY to the same message
 ```
 
 ---
@@ -156,54 +158,54 @@ KEY INSIGHT:
 ### Step 1: Define the Observer and Subject interfaces
 
 ```typescript
-interface VideoEvent {
+interface SlackMessage {
   channelName: string;
-  videoTitle: string;
-  videoUrl: string;
-  uploadedAt: Date;
+  sender: string;
+  text: string;
+  timestamp: Date;
 }
 
 interface Observer {
-  update(event: VideoEvent): void;
+  onMessage(message: SlackMessage): void;
   getName(): string;
 }
 
 interface Subject {
-  subscribe(observer: Observer): void;
-  unsubscribe(observer: Observer): void;
-  notify(event: VideoEvent): void;
+  join(observer: Observer): void;
+  leave(observer: Observer): void;
+  notifyAll(message: SlackMessage): void;
 }
 ```
 
 ### Step 2: Create the concrete Subject
 
 ```typescript
-class YouTubeChannel implements Subject {
+class SlackChannel implements Subject {
   private observers: Observer[] = [];
 
-  subscribe(observer: Observer) {
+  join(observer: Observer) {
     this.observers.push(observer);
   }
 
-  unsubscribe(observer: Observer) {
+  leave(observer: Observer) {
     const index = this.observers.indexOf(observer);
     if (index !== -1) this.observers.splice(index, 1);
   }
 
-  notify(event: VideoEvent) {
+  notifyAll(message: SlackMessage) {
     for (const observer of this.observers) {
-      observer.update(event);
+      observer.onMessage(message);
     }
   }
 
-  uploadVideo(title: string) {
-    const event: VideoEvent = {
+  postMessage(sender: string, text: string) {
+    const message: SlackMessage = {
       channelName: this.name,
-      videoTitle: title,
-      videoUrl: `https://youtube.com/watch?v=${title}`,
-      uploadedAt: new Date(),
+      sender,
+      text,
+      timestamp: new Date(),
     };
-    this.notify(event);
+    this.notifyAll(message);
   }
 }
 ```
@@ -211,22 +213,20 @@ class YouTubeChannel implements Subject {
 ### Step 3: Create concrete Observers
 
 ```typescript
-class RegularUser implements Observer {
+class DesktopApp implements Observer {
   getName() { return this.name; }
 
-  update(event: VideoEvent) {
-    console.log(`Watching "${event.videoTitle}" now!`);
+  onMessage(message: SlackMessage) {
+    console.log(`[PC] New message: ${message.sender}: "${message.text}"`);
   }
 }
 
-class WatchLaterUser implements Observer {
-  private queue: string[] = [];
-
+class MobileApp implements Observer {
   getName() { return this.name; }
 
-  update(event: VideoEvent) {
-    this.queue.push(event.videoTitle);
-    console.log(`Saved "${event.videoTitle}" for later.`);
+  onMessage(message: SlackMessage) {
+    const preview = message.text.substring(0, 20) + "...";
+    console.log(`[Mobile] Push: ${message.sender}: "${preview}"`);
   }
 }
 ```
@@ -240,26 +240,27 @@ class WatchLaterUser implements Observer {
 // INTERFACES
 // ============================================
 
-interface VideoEvent {
+interface SlackMessage {
   channelName: string;
-  videoTitle: string;
+  sender: string;
+  text: string;
 }
 
 interface Observer {
-  update(event: VideoEvent): void;
+  onMessage(message: SlackMessage): void;
 }
 
 interface Subject {
-  subscribe(observer: Observer): void;
-  unsubscribe(observer: Observer): void;
-  notify(event: VideoEvent): void;
+  join(observer: Observer): void;
+  leave(observer: Observer): void;
+  notifyAll(message: SlackMessage): void;
 }
 
 // ============================================
 // CONCRETE SUBJECT
 // ============================================
 
-class YouTubeChannel implements Subject {
+class SlackChannel implements Subject {
   private name: string;
   private observers: Observer[] = [];
 
@@ -267,23 +268,23 @@ class YouTubeChannel implements Subject {
     this.name = name;
   }
 
-  subscribe(observer: Observer) {
+  join(observer: Observer) {
     this.observers.push(observer);
   }
 
-  unsubscribe(observer: Observer) {
+  leave(observer: Observer) {
     this.observers = this.observers.filter(o => o !== observer);
   }
 
-  notify(event: VideoEvent) {
+  notifyAll(message: SlackMessage) {
     for (const observer of this.observers) {
-      observer.update(event);
+      observer.onMessage(message);
     }
   }
 
-  uploadVideo(title: string) {
-    console.log(`[${this.name}] Uploaded: "${title}"`);
-    this.notify({ channelName: this.name, videoTitle: title });
+  postMessage(sender: string, text: string) {
+    console.log(`[#${this.name}] ${sender}: "${text}"`);
+    this.notifyAll({ channelName: this.name, sender, text });
   }
 }
 
@@ -291,21 +292,29 @@ class YouTubeChannel implements Subject {
 // CONCRETE OBSERVERS
 // ============================================
 
-class RegularUser implements Observer {
+class DesktopApp implements Observer {
   constructor(private name: string) {}
 
-  update(event: VideoEvent) {
-    console.log(`  [${this.name}] Watching "${event.videoTitle}" now!`);
+  onMessage(message: SlackMessage) {
+    console.log(`  [${this.name} - PC] Shows message on screen`);
   }
 }
 
-class WatchLaterUser implements Observer {
-  private queue: string[] = [];
+class MobileApp implements Observer {
   constructor(private name: string) {}
 
-  update(event: VideoEvent) {
-    this.queue.push(event.videoTitle);
-    console.log(`  [${this.name}] Saved "${event.videoTitle}" to Watch Later.`);
+  onMessage(message: SlackMessage) {
+    console.log(`  [${this.name} - Mobile] Push notification sent`);
+  }
+}
+
+class SlackBot implements Observer {
+  constructor(private name: string, private keyword: string) {}
+
+  onMessage(message: SlackMessage) {
+    if (message.text.includes(this.keyword)) {
+      console.log(`  [${this.name} - Bot] Auto-reply: "How can I help?"`);
+    }
   }
 }
 
@@ -313,25 +322,34 @@ class WatchLaterUser implements Observer {
 // USAGE
 // ============================================
 
-const channel = new YouTubeChannel("Tech Academy");
-const alice = new RegularUser("Alice");
-const bob = new WatchLaterUser("Bob");
+const general = new SlackChannel("general");
+const alicePC = new DesktopApp("Alice");
+const aliceMobile = new MobileApp("Alice");
+const helpBot = new SlackBot("HelpBot", "help");
 
-channel.subscribe(alice);
-channel.subscribe(bob);
+general.join(alicePC);
+general.join(aliceMobile);
+general.join(helpBot);
 
-channel.uploadVideo("Observer Pattern Tutorial");
-// [Tech Academy] Uploaded: "Observer Pattern Tutorial"
-//   [Alice] Watching "Observer Pattern Tutorial" now!
-//   [Bob] Saved "Observer Pattern Tutorial" to Watch Later.
+general.postMessage("Bob", "Hey everyone!");
+// [#general] Bob: "Hey everyone!"
+//   [Alice - PC] Shows message on screen
+//   [Alice - Mobile] Push notification sent
+//   (HelpBot does nothing - no keyword match)
 
-// Unsubscribe Bob
-channel.unsubscribe(bob);
+general.postMessage("Charlie", "I need help with deploy");
+// [#general] Charlie: "I need help with deploy"
+//   [Alice - PC] Shows message on screen
+//   [Alice - Mobile] Push notification sent
+//   [HelpBot - Bot] Auto-reply: "How can I help?"
 
-channel.uploadVideo("Strategy Pattern Tutorial");
-// [Tech Academy] Uploaded: "Strategy Pattern Tutorial"
-//   [Alice] Watching "Strategy Pattern Tutorial" now!
-// Bob is NOT notified!
+// Leave channel
+general.leave(aliceMobile);
+
+general.postMessage("Bob", "Lunch?");
+// [#general] Bob: "Lunch?"
+//   [Alice - PC] Shows message on screen
+//   (Alice's mobile is NOT notified!)
 ```
 
 ---
@@ -345,8 +363,8 @@ The browser's event system IS the Observer pattern.
 ```typescript
 // The button is the Subject
 // The callback function is the Observer
-button.addEventListener("click", handleClick);   // subscribe
-button.removeEventListener("click", handleClick); // unsubscribe
+button.addEventListener("click", handleClick);   // join
+button.removeEventListener("click", handleClick); // leave
 
 // When the button is clicked, all listeners are notified
 ```
@@ -357,7 +375,7 @@ React's `useState` and re-rendering is Observer under the hood.
 
 ```typescript
 // Simplified concept:
-// Component "subscribes" to state changes
+// Component "joins" (subscribes to) state changes
 // When setState is called, React "notifies" the component to re-render
 
 const [count, setCount] = useState(0);
@@ -426,11 +444,11 @@ class StockTicker {
 ```
 OBSERVER PATTERN:
 ┌─────────────────────────────────────┐
-│  Subject (YouTubeChannel)           │
+│  Subject (SlackChannel)             │
 │                                     │
-│  subscribe(o)   → add listener      │
-│  unsubscribe(o) → remove listener   │
-│  notify()       → push to ALL       │
+│  join(o)      → add listener        │
+│  leave(o)     → remove listener     │
+│  notifyAll()  → push to ALL         │
 │                                     │
 │  → ONE-TO-MANY relationship         │
 │  → PUSH-based (subject pushes)      │
@@ -457,15 +475,15 @@ STRATEGY PATTERN (for comparison):
 | **Who changes** | Observers can join/leave | Strategy is swapped |
 | **Pattern type** | Behavioral | Behavioral |
 
-### Easy Explanation: YouTube vs Restaurant
+### Easy Explanation: Slack vs Restaurant
 
-**Observer** is like a YouTube channel:
+**Observer** is like a Slack channel:
 ```
-Channel uploads a video
-  → Alice gets notified
-  → Bob gets notified
-  → Charlie gets notified
-  (everyone who subscribed)
+Someone posts a message in #general
+  → Alice's PC shows it on screen
+  → Alice's phone sends a push notification
+  → HelpBot checks for keywords
+  (everyone in the channel gets it)
 ```
 
 **Strategy** is like choosing a chef:
@@ -483,41 +501,41 @@ Restaurant gets an order
 
 ## Common Mistakes
 
-### Mistake 1: Forgetting to unsubscribe (Memory Leak)
+### Mistake 1: Forgetting to leave (Memory Leak)
 
 **Bad:**
 ```typescript
-class UserComponent {
-  constructor(channel: YouTubeChannel) {
-    channel.subscribe(this); // subscribe...
+class NotificationService {
+  constructor(channel: SlackChannel) {
+    channel.join(this); // join...
   }
-  // Never unsubscribes! Even after the component is destroyed,
+  // Never leaves! Even after the service is destroyed,
   // the channel still holds a reference → memory leak
 }
 ```
 
 **Better:**
 ```typescript
-class UserComponent {
-  constructor(private channel: YouTubeChannel) {
-    channel.subscribe(this);
+class NotificationService {
+  constructor(private channel: SlackChannel) {
+    channel.join(this);
   }
 
   destroy() {
-    this.channel.unsubscribe(this); // Clean up!
+    this.channel.leave(this); // Clean up!
   }
 }
 ```
 
-### Mistake 2: Observer modifies the Subject during update
+### Mistake 2: Observer modifies the Subject during notification
 
 **Bad:**
 ```typescript
 class BadObserver implements Observer {
-  update(event: VideoEvent) {
+  onMessage(message: SlackMessage) {
     // DON'T modify the subject during notification!
-    channel.unsubscribe(this); // Can cause iteration bugs
-    channel.uploadVideo("Response video"); // Infinite loop risk!
+    channel.leave(this); // Can cause iteration bugs
+    channel.postMessage("Bot", "Response"); // Infinite loop risk!
   }
 }
 ```
@@ -549,7 +567,7 @@ user.update({ name: "Alice", age: 25, email: "a@b.com" });
 | Situation | Why |
 |-----------|-----|
 | **One change should affect many objects** | Notify all at once |
-| **You don't know how many observers in advance** | Dynamic subscribe/unsubscribe |
+| **You don't know how many observers in advance** | Dynamic join/leave |
 | **Objects should be loosely coupled** | Subject doesn't know concrete observers |
 | **You're replacing manual "polling" for changes** | Push is more efficient than pull |
 
@@ -570,11 +588,11 @@ user.update({ name: "Alice", age: 25, email: "a@b.com" });
 |------|---------|
 | **Subject** | The object being observed (sends notifications) |
 | **Observer** | The object that receives notifications |
-| **Subscribe** | Register to receive notifications |
-| **Unsubscribe** | Stop receiving notifications |
+| **Subscribe / Join** | Register to receive notifications |
+| **Unsubscribe / Leave** | Stop receiving notifications |
 | **Notify** | Subject tells all observers about a change |
-| **Event/Payload** | The data sent with the notification |
-| **Publish/Subscribe** | Another name for the Observer pattern |
+| **Event / Payload** | The data sent with the notification |
+| **Publish / Subscribe** | Another name for the Observer pattern |
 
 ---
 
@@ -603,9 +621,9 @@ user.update({ name: "Alice", age: 25, email: "a@b.com" });
 
 **Observer Pattern in 30 seconds:**
 - Define a Subject that maintains a list of Observers
-- Observers implement a common interface with an `update()` method
-- When the Subject's state changes, it calls `update()` on all Observers
-- Observers can subscribe/unsubscribe at any time
+- Observers implement a common interface with an `onMessage()` (or `update()`) method
+- When the Subject's state changes, it calls `onMessage()` on all Observers
+- Observers can join/leave at any time
 - Use when: one change should notify many objects, loose coupling needed, dynamic subscriptions
 
 ---
@@ -613,7 +631,7 @@ user.update({ name: "Alice", age: 25, email: "a@b.com" });
 ## Try It Yourself
 
 1. Read the code in `code/` folder
-2. Create a `HighlightUser` observer that only reacts to videos with certain keywords
-3. Add an `unsubscribeAll()` method to `YouTubeChannel`
-4. Create a `BlogSite` subject that uses the same Observer interface but for blog posts
+2. Create an `EmailNotifier` observer that sends email for messages containing "@all"
+3. Add a `leaveAll()` method to `SlackChannel` that removes all observers
+4. Create a `DiscordServer` subject that uses the same Observer interface but for Discord messages
 5. Implement a stock price tracker with `StockTicker` subject and `Trader` observers

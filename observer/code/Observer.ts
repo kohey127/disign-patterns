@@ -6,10 +6,10 @@
  * when one object (Subject) changes state, all its dependents
  * (Observers) are notified and updated automatically.
  *
- * Think: YouTube subscriptions.
- * - The channel (Subject) uploads a video
- * - All subscribers (Observers) get notified
- * - You can subscribe/unsubscribe at any time
+ * Think: Slack channel.
+ * - Someone posts a message in #general (Subject)
+ * - All members get notified in different ways (Observers)
+ * - You can join/leave the channel at any time
  */
 
 // ============================================
@@ -20,11 +20,11 @@
  * The notification payload.
  * All observers receive the same shape of data.
  */
-export interface VideoEvent {
+export interface SlackMessage {
   channelName: string;
-  videoTitle: string;
-  videoUrl: string;
-  uploadedAt: Date;
+  sender: string;
+  text: string;
+  timestamp: Date;
 }
 
 // ============================================
@@ -36,10 +36,10 @@ export interface VideoEvent {
  *
  * Any object that wants to receive notifications must implement this.
  * This is the KEY: the Subject doesn't know WHO is listening,
- * only that they have an update() method.
+ * only that they have an onMessage() method.
  */
 export interface Observer {
-  update(event: VideoEvent): void;
+  onMessage(message: SlackMessage): void;
   getName(): string;
 }
 
@@ -54,22 +54,22 @@ export interface Observer {
  * It manages a list of observers and notifies them when something happens.
  */
 export interface Subject {
-  subscribe(observer: Observer): void;
-  unsubscribe(observer: Observer): void;
-  notify(event: VideoEvent): void;
+  join(observer: Observer): void;
+  leave(observer: Observer): void;
+  notifyAll(message: SlackMessage): void;
 }
 
 // ============================================
-// CONCRETE SUBJECT: YouTube Channel
+// CONCRETE SUBJECT: Slack Channel
 // ============================================
 
 /**
- * A YouTube channel that people can subscribe to.
+ * A Slack channel that members can join.
  *
- * When a new video is uploaded, all subscribers are notified.
- * Subscribers can join or leave at any time.
+ * When someone posts a message, all members are notified.
+ * Members can join or leave at any time.
  */
-export class YouTubeChannel implements Subject {
+export class SlackChannel implements Subject {
   private name: string;
   private observers: Observer[] = [];
 
@@ -82,63 +82,63 @@ export class YouTubeChannel implements Subject {
   }
 
   /**
-   * Add an observer to the notification list.
-   * Like clicking "Subscribe" on YouTube.
+   * Add an observer to the channel.
+   * Like joining a Slack channel.
    */
-  subscribe(observer: Observer): void {
+  join(observer: Observer): void {
     const exists = this.observers.includes(observer);
     if (exists) {
-      console.log(`  [${this.name}] ${observer.getName()} is already subscribed.`);
+      console.log(`  [#${this.name}] ${observer.getName()} is already in the channel.`);
       return;
     }
     this.observers.push(observer);
-    console.log(`  [${this.name}] ${observer.getName()} subscribed!`);
+    console.log(`  [#${this.name}] ${observer.getName()} joined the channel!`);
   }
 
   /**
-   * Remove an observer from the notification list.
-   * Like clicking "Unsubscribe" on YouTube.
+   * Remove an observer from the channel.
+   * Like leaving a Slack channel.
    */
-  unsubscribe(observer: Observer): void {
+  leave(observer: Observer): void {
     const index = this.observers.indexOf(observer);
     if (index === -1) {
-      console.log(`  [${this.name}] ${observer.getName()} is not subscribed.`);
+      console.log(`  [#${this.name}] ${observer.getName()} is not in the channel.`);
       return;
     }
     this.observers.splice(index, 1);
-    console.log(`  [${this.name}] ${observer.getName()} unsubscribed.`);
+    console.log(`  [#${this.name}] ${observer.getName()} left the channel.`);
   }
 
   /**
-   * Notify ALL observers about an event.
+   * Notify ALL observers about a message.
    * This is the CORE of the pattern - the Subject loops through
-   * its observers and calls update() on each one.
+   * its observers and calls onMessage() on each one.
    */
-  notify(event: VideoEvent): void {
-    console.log(`  [${this.name}] Notifying ${this.observers.length} subscriber(s)...`);
+  notifyAll(message: SlackMessage): void {
+    console.log(`  [#${this.name}] Notifying ${this.observers.length} member(s)...`);
     for (const observer of this.observers) {
-      observer.update(event);
+      observer.onMessage(message);
     }
   }
 
   /**
-   * Upload a new video - triggers notification to all subscribers.
+   * Someone posts a message - triggers notification to all members.
    */
-  uploadVideo(title: string): void {
-    console.log(`\n  [${this.name}] Uploaded: "${title}"`);
-    const event: VideoEvent = {
+  postMessage(sender: string, text: string): void {
+    console.log(`\n  [#${this.name}] ${sender}: "${text}"`);
+    const message: SlackMessage = {
       channelName: this.name,
-      videoTitle: title,
-      videoUrl: `https://youtube.com/watch?v=${title.toLowerCase().replace(/\s+/g, "-")}`,
-      uploadedAt: new Date(),
+      sender,
+      text,
+      timestamp: new Date(),
     };
-    this.notify(event);
+    this.notifyAll(message);
   }
 
   /**
-   * Get the number of subscribers.
+   * Get the number of members.
    */
-  getSubscriberCount(): number {
+  getMemberCount(): number {
     return this.observers.length;
   }
 }

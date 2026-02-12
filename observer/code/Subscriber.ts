@@ -1,29 +1,30 @@
 /**
- * Observer Pattern - Concrete Observers (Subscribers)
+ * Observer Pattern - Concrete Observers (Channel Members)
  *
- * Each observer reacts DIFFERENTLY to the same event.
+ * Each observer reacts DIFFERENTLY to the same message.
  * That's the beauty of the pattern:
  * - The Subject sends ONE notification
  * - Each Observer handles it in its OWN way
  *
- * Think: When a YouTube channel uploads a video...
- * - One person watches it immediately
- * - Another saves it for later
- * - A bot logs it to a database
+ * Think: When someone posts in #general...
+ * - PC user sees it on their screen
+ * - Mobile user gets a push notification
+ * - A bot auto-replies if it detects a keyword
  */
 
-import { Observer, VideoEvent } from "./Observer";
+import { Observer, SlackMessage } from "./Observer";
 
 // ============================================
-// CONCRETE OBSERVER 1: Regular User
+// CONCRETE OBSERVER 1: Desktop App
 // ============================================
 
 /**
- * A regular user who watches videos right away.
+ * Slack on your PC - shows the message on screen.
  *
- * Think: "I have notifications on, I watch everything immediately!"
+ * Think: You're working on your laptop, a message pops up
+ * in the Slack window.
  */
-export class RegularUser implements Observer {
+export class DesktopApp implements Observer {
   private name: string;
 
   constructor(name: string) {
@@ -34,26 +35,26 @@ export class RegularUser implements Observer {
     return this.name;
   }
 
-  update(event: VideoEvent): void {
+  onMessage(message: SlackMessage): void {
     console.log(
-      `    [${this.name}] New video from ${event.channelName}! ` +
-      `Watching "${event.videoTitle}" now.`
+      `    [${this.name} - PC] ` +
+      `#${message.channelName} に新着メッセージ: ${message.sender}「${message.text}」`
     );
   }
 }
 
 // ============================================
-// CONCRETE OBSERVER 2: Watch-Later User
+// CONCRETE OBSERVER 2: Mobile App
 // ============================================
 
 /**
- * A user who saves videos to watch later.
+ * Slack on your phone - sends a push notification.
  *
- * Think: "I'm busy, I'll add it to my Watch Later playlist."
+ * Think: Your phone buzzes with a notification banner.
+ * Shows a short preview of the message.
  */
-export class WatchLaterUser implements Observer {
+export class MobileApp implements Observer {
   private name: string;
-  private watchLater: string[] = [];
 
   constructor(name: string) {
     this.name = name;
@@ -63,48 +64,60 @@ export class WatchLaterUser implements Observer {
     return this.name;
   }
 
-  update(event: VideoEvent): void {
-    this.watchLater.push(event.videoTitle);
+  onMessage(message: SlackMessage): void {
+    // Mobile shows a shorter preview
+    const preview = message.text.length > 20
+      ? message.text.substring(0, 20) + "..."
+      : message.text;
     console.log(
-      `    [${this.name}] Saved "${event.videoTitle}" to Watch Later. ` +
-      `(${this.watchLater.length} video(s) in queue)`
+      `    [${this.name} - Mobile] ` +
+      `Push notification: ${message.sender}: "${preview}"`
     );
-  }
-
-  getWatchLaterList(): string[] {
-    return [...this.watchLater];
   }
 }
 
 // ============================================
-// CONCRETE OBSERVER 3: Notification Bot
+// CONCRETE OBSERVER 3: Slack Bot
 // ============================================
 
 /**
- * An automated bot that logs all uploads.
+ * An automated bot that reacts to keywords.
  *
- * Think: A Discord bot that posts "New video!" in a server channel.
+ * Think: A bot in your Slack workspace that auto-replies
+ * when someone says "help" or logs all messages.
  * This shows that Observers don't have to be "users" - they can be
- * any object that needs to react to changes.
+ * any object that needs to react to messages.
  */
-export class NotificationBot implements Observer {
+export class SlackBot implements Observer {
   private name: string;
+  private keyword: string;
   private log: string[] = [];
 
-  constructor(name: string) {
+  constructor(name: string, keyword: string) {
     this.name = name;
+    this.keyword = keyword;
   }
 
   getName(): string {
     return this.name;
   }
 
-  update(event: VideoEvent): void {
-    const logEntry = `[${event.uploadedAt.toISOString()}] ${event.channelName} uploaded "${event.videoTitle}"`;
-    this.log.push(logEntry);
-    console.log(
-      `    [${this.name}] Logged: ${event.channelName} → "${event.videoTitle}"`
-    );
+  onMessage(message: SlackMessage): void {
+    // Log every message
+    this.log.push(`[${message.channelName}] ${message.sender}: ${message.text}`);
+
+    // Auto-reply if the keyword is found
+    if (message.text.toLowerCase().includes(this.keyword)) {
+      console.log(
+        `    [${this.name} - Bot] ` +
+        `Keyword "${this.keyword}" detected! Auto-reply: "How can I help you?"`
+      );
+    } else {
+      console.log(
+        `    [${this.name} - Bot] ` +
+        `Message logged. (${this.log.length} messages recorded)`
+      );
+    }
   }
 
   getLog(): string[] {
