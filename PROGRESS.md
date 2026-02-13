@@ -1,0 +1,56 @@
+# Design Patterns 学習プログレス
+
+## 学習フロー
+
+各パターンについて、以下の順番で進める：
+
+1. **日本語で理解** — Claudeに質問しながら概念を固める
+2. **自分の言葉でまとめる** — YouTube台本レベルで要点を整理する
+3. **YouTube動画を撮る** — VS Code画面収録 + 声で解説（無編集OK）
+4. **英語で読み直す** — 理解済みの内容をREADMEで英語の練習として読む
+
+---
+
+## 進捗一覧
+
+| パターン | カテゴリ | 1. 日本語理解 | 2. 自分の言葉で整理 | 3. YouTube撮影 | 4. 英語で読み直し |
+|----------|----------|:---:|:---:|:---:|:---:|
+| Singleton | Creational | Done | - | - | - |
+| Factory | Creational | Done | - | - | - |
+| Abstract Factory | Creational | Done | - | - | - |
+| Strategy | Behavioral | Done | - | - | - |
+| Observer | Behavioral | Done | - | - | - |
+
+> ステータス: `Done` / `In Progress` / `-`（未着手）
+
+---
+
+## 学習ログ
+
+### 2025-02-13
+- Observer パターンの「何が嬉しいか」をClaudeと確認
+- 学習フローの見直し：英語とデザインパターンの学習を分離する方針に決定
+- YouTube撮影の進め方を検討（画面収録 + 声、5〜10分、無編集でOK）
+- Observer README の品質改善：
+  - 簡略版コードの未定義参照・不整合を多数修正（constructor 漏れ、未使用引数、インターフェース不一致など）
+  - 「How to Make an Observer (3 Steps)」セクションを削除（Complete Example と重複・不整合のため）
+  - Common Mistakes を分割（observer リスト変更の問題と無限ループの問題を別々に解説）
+- CLAUDE.md にコードスニペットの品質ルール・ライティングスタイルルールを追加
+- Observer パターンの深掘り：Subject/Observer の英語の意味、Hollywood Principle、onMessage の呼ばれるタイミング、constructor の使い分け、無限ループの仕組み
+
+---
+
+## 次にやること
+
+- [ ] 既習パターンの中から1つ選んで「自分の言葉でまとめ」を作る
+- [ ] 最初のYouTube動画を1本撮ってみる（非公開でOK）
+- [ ] 撮影環境のセットアップ（OBSまたはQuickTime）
+
+---
+
+## メモ
+
+- 日付の記録は「体感日付」で。深夜〜早朝は前日扱い。微妙な時間帯はClaudeから確認する
+- 最初から完璧を目指さない。1本撮ることが最優先
+- 動画ファイルはYouTubeアップ後にローカルから削除してOK
+- 新しいパターンを追加するときは、まずステップ1から始める

@@ -70,6 +70,8 @@ interface Observer {
 class SlackChannel {
   private observers: Observer[] = [];
 
+  constructor(private name: string) {}
+
   join(observer: Observer) {
     this.observers.push(observer);
   }
@@ -91,6 +93,7 @@ class SlackChannel {
 **Now adding a new observer type is easy:**
 
 ```typescript
+// Define observers - each one decides how to react to a message
 class DesktopApp implements Observer {
   onMessage(message: SlackMessage) {
     console.log(`New message on screen: ${message.text}`);
@@ -105,10 +108,22 @@ class SlackBot implements Observer {
   }
 }
 
-// Join the channel - the channel doesn't care WHO is listening
-channel.join(new DesktopApp("Alice"));
-channel.join(new SlackBot("HelpBot"));
-channel.postMessage("Bob", "I need help!"); // Both get notified!
+// --- Actually use them ---
+
+// 1. Create a channel
+const channel = new SlackChannel("general");
+
+// 2. Join the channel - the channel doesn't care WHO is listening
+channel.join(new DesktopApp());
+channel.join(new SlackBot());
+
+// 3. Someone posts a message
+channel.postMessage("Bob", "I need help!");
+
+// What happens:
+//   SlackChannel loops through all observers and calls onMessage() on each one
+//   → DesktopApp.onMessage() runs → "New message on screen: I need help!"
+//   → SlackBot.onMessage() runs   → "Bot: How can I help you?" (because "help" is in the text)
 ```
 
 ---
@@ -132,7 +147,6 @@ channel.postMessage("Bob", "I need help!"); // Both get notified!
           │   (interface)          │
           │                        │
           │  + onMessage(message)  │
-          │  + getName()           │
           └────────────────────────┘
             ▲          ▲          ▲
             │          │          │
@@ -149,86 +163,6 @@ KEY INSIGHT:
 - It just calls onMessage() on each observer
 - Observers can join or leave at any time
 - Each observer reacts DIFFERENTLY to the same message
-```
-
----
-
-## How to Make an Observer (3 Steps)
-
-### Step 1: Define the Observer and Subject interfaces
-
-```typescript
-interface SlackMessage {
-  channelName: string;
-  sender: string;
-  text: string;
-  timestamp: Date;
-}
-
-interface Observer {
-  onMessage(message: SlackMessage): void;
-  getName(): string;
-}
-
-interface Subject {
-  join(observer: Observer): void;
-  leave(observer: Observer): void;
-  notifyAll(message: SlackMessage): void;
-}
-```
-
-### Step 2: Create the concrete Subject
-
-```typescript
-class SlackChannel implements Subject {
-  private observers: Observer[] = [];
-
-  join(observer: Observer) {
-    this.observers.push(observer);
-  }
-
-  leave(observer: Observer) {
-    const index = this.observers.indexOf(observer);
-    if (index !== -1) this.observers.splice(index, 1);
-  }
-
-  notifyAll(message: SlackMessage) {
-    for (const observer of this.observers) {
-      observer.onMessage(message);
-    }
-  }
-
-  postMessage(sender: string, text: string) {
-    const message: SlackMessage = {
-      channelName: this.name,
-      sender,
-      text,
-      timestamp: new Date(),
-    };
-    this.notifyAll(message);
-  }
-}
-```
-
-### Step 3: Create concrete Observers
-
-```typescript
-class DesktopApp implements Observer {
-  getName() { return this.name; }
-
-  onMessage(message: SlackMessage) {
-    console.log(`[PC] New message: ${message.sender}: "${message.text}"`);
-  }
-}
-
-class MobileApp implements Observer {
-  getName() { return this.name; }
-
-  onMessage(message: SlackMessage) {
-    const preview = message.text.substring(0, 20) + "...";
-    console.log(`[Mobile] Push: ${message.sender}: "${preview}"`);
-  }
-}
 ```
 
 ---
@@ -505,9 +439,13 @@ Restaurant gets an order
 
 **Bad:**
 ```typescript
-class NotificationService {
+class NotificationService implements Observer {
   constructor(channel: SlackChannel) {
     channel.join(this); // join...
+  }
+
+  onMessage(message: SlackMessage) {
+    console.log(`Notification: ${message.text}`);
   }
   // Never leaves! Even after the service is destroyed,
   // the channel still holds a reference → memory leak
@@ -516,9 +454,13 @@ class NotificationService {
 
 **Better:**
 ```typescript
-class NotificationService {
+class NotificationService implements Observer {
   constructor(private channel: SlackChannel) {
     channel.join(this);
+  }
+
+  onMessage(message: SlackMessage) {
+    console.log(`Notification: ${message.text}`);
   }
 
   destroy() {
@@ -527,20 +469,34 @@ class NotificationService {
 }
 ```
 
-### Mistake 2: Observer modifies the Subject during notification
+### Mistake 2: Changing the observer list during notification
+
+Don't call `join()` or `leave()` inside `onMessage()`. The Subject is looping through the observer list. If you change the list during the loop, observers can be skipped or cause errors.
 
 **Bad:**
 ```typescript
-class BadObserver implements Observer {
+class LeavingObserver implements Observer {
   onMessage(message: SlackMessage) {
-    // DON'T modify the subject during notification!
-    channel.leave(this); // Can cause iteration bugs
-    channel.postMessage("Bot", "Response"); // Infinite loop risk!
+    channel.leave(this); // The observer list changes while looping → bug
   }
 }
 ```
 
-### Mistake 3: Too many fine-grained notifications
+### Mistake 3: Calling postMessage inside onMessage (infinite loop)
+
+`onMessage` is called by `postMessage`. If `onMessage` calls `postMessage` again, it triggers `onMessage` again, which calls `postMessage` again... forever.
+
+**Bad:**
+```typescript
+class ReplyBot implements Observer {
+  onMessage(message: SlackMessage) {
+    channel.postMessage("Bot", "Response");
+    // postMessage → onMessage → postMessage → onMessage → never stops
+  }
+}
+```
+
+### Mistake 4: Too many fine-grained notifications
 
 **Bad:**
 ```typescript
