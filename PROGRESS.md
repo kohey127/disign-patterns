@@ -19,13 +19,20 @@
 | Factory | Creational | Done | - | - | - |
 | Abstract Factory | Creational | Done | - | - | - |
 | Strategy | Behavioral | Done | - | - | - |
-| Observer | Behavioral | Done | - | - | - |
+| Observer | Behavioral | Done | Done | Done | Done |
+| Decorator | Structural | - | - | - | - |
 
 > ステータス: `Done` / `In Progress` / `-`（未着手）
 
 ---
 
 ## 学習ログ
+
+### 2026-02-14
+- Observer パターン全ステップ完了（日本語理解→自分の言葉で整理→YouTube撮影→英語で読み直し）
+- YouTube へのアップロードまで完了
+- `Subscriber.ts` を `ConcreteObservers.ts` にリネーム（ファイル名をより明確に）
+- Decorator パターンの README・コード・デモを追加（初の Structural パターン）
 
 ### 2025-02-13
 - Observer パターンの「何が嬉しいか」をClaudeと確認
@@ -42,9 +49,10 @@
 
 ## 次にやること
 
-- [ ] 既習パターンの中から1つ選んで「自分の言葉でまとめ」を作る
-- [ ] 最初のYouTube動画を1本撮ってみる（非公開でOK）
-- [ ] 撮影環境のセットアップ（OBSまたはQuickTime）
+- [x] ~~既習パターンの中から1つ選んで「自分の言葉でまとめ」を作る~~ → Observer で完了
+- [x] ~~最初のYouTube動画を1本撮ってみる~~ → Observer で完了・アップロード済み
+- [ ] Decorator パターンのステップ1（日本語理解）から始める
+- [ ] 他の既習パターン（Singleton, Factory, Abstract Factory, Strategy）のYouTube動画を撮る
 
 ---
 

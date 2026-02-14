@@ -10,7 +10,7 @@
  */
 
 import { SlackChannel } from "./Observer";
-import { DesktopApp, MobileApp, SlackBot } from "./Subscriber";
+import { DesktopApp, MobileApp, SlackBot } from "./ConcreteObservers";
 
 // ============================================
 // DEMO START
