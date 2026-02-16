@@ -20,13 +20,19 @@
 | Abstract Factory | Creational | Done | - | - | - |
 | Strategy | Behavioral | Done | - | - | - |
 | Observer | Behavioral | Done | Done | Done | Done |
-| Decorator | Structural | - | - | - | - |
+| Decorator | Structural | Done | Done | Done | - |
 
 > ステータス: `Done` / `In Progress` / `-`（未着手）
 
 ---
 
 ## 学習ログ
+
+### 2026-02-16
+- Strategy・Observer のアンチパターンを日本語で理解（行動ミッション形式）
+- Decorator パターンを全体的に日本語で理解（アンチパターン含む）
+- Decorator パターンのステップ1〜3完了（日本語理解→自分の言葉で整理→YouTube撮影）
+- YouTube へのアップロードまで完了
 
 ### 2026-02-14
 - Observer パターン全ステップ完了（日本語理解→自分の言葉で整理→YouTube撮影→英語で読み直し）
@@ -51,7 +57,7 @@
 
 - [x] ~~既習パターンの中から1つ選んで「自分の言葉でまとめ」を作る~~ → Observer で完了
 - [x] ~~最初のYouTube動画を1本撮ってみる~~ → Observer で完了・アップロード済み
-- [ ] Decorator パターンのステップ1（日本語理解）から始める
+- [x] ~~Decorator パターンのステップ1（日本語理解）から始める~~ → 完了
 - [ ] 他の既習パターン（Singleton, Factory, Abstract Factory, Strategy）のYouTube動画を撮る
 
 ---
