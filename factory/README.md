@@ -392,29 +392,28 @@ const notification = Notification.createEmail("user@example.com");
 
 ---
 
-## Common Mistakes
+## Anti-patterns
 
-### Mistake 1: Making the Factory too smart
+### 1. Factory with Side Effects — Factory does more than create
 
-**Bad - Factory does too much:**
+A factory should **only create** objects. It should not save to a database, send emails, or write logs. Those are side effects (actions that change things outside the function). When a factory has side effects, you cannot create objects for testing without triggering real actions.
+
+**Bad — factory creates AND does other things:**
 ```typescript
 class NotificationFactory {
   create(type: string, recipient: string, message: string): void {
-    // Factory creates AND sends? Too many responsibilities!
-    const notification = this.createNotification(type, recipient);
-    notification.setMessage(message);
-    notification.send();
-    this.logNotification(notification);
-    this.updateStatistics(type);
+    const notification = this.build(type, recipient);
+    notification.send(message);           // Side effect: sends!
+    database.save(notification);          // Side effect: writes to DB!
+    logger.info("Notification created");  // Side effect: logs!
   }
 }
 ```
 
-**Good - Factory ONLY creates:**
+**Better — factory only creates:**
 ```typescript
 class NotificationFactory {
-  create(type: string, recipient: string): Notification {
-    // Factory's only job: create and return
+  create(type: NotificationType, recipient: string): Notification {
     switch (type) {
       case "email": return new EmailNotification(recipient);
       case "sms":   return new SMSNotification(recipient);
@@ -422,57 +421,125 @@ class NotificationFactory {
   }
 }
 
-// Let calling code decide what to do with it
+// The caller decides what to do with the object
 const notification = factory.create("email", "user@example.com");
 notification.send(message);
-logger.log("Sent notification");
 ```
 
-### Mistake 2: Using Factory when unnecessary
+### 2. Stringly-Typed Factory — Using raw strings for type selection
 
-**Bad - Factory for a single class:**
+When a factory uses `string` to choose which class to create, typos are not caught until the program runs. The word "stringly-typed" is a joke on "strongly-typed" — it means using strings where types should be used.
+
+**Bad — typo compiles fine, crashes at runtime:**
 ```typescript
-class UserFactory {
-  create(name: string): User {
-    return new User(name);  // Why not just use "new User(name)"?
+class NotificationFactory {
+  create(type: string): Notification {
+    if (type === "email") return new EmailNotification();
+    if (type === "sms")   return new SMSNotification();
+    throw new Error(`Unknown type: ${type}`);
   }
 }
+
+const n = factory.create("emial"); // Typo! No error until runtime
 ```
 
-**When to use Factory:**
-- Multiple classes that share an interface
-- Creation logic is complex
-- You need to hide which concrete class is used
-
-### Mistake 3: String-based type selection
-
-**Fragile - Typos cause runtime errors:**
+**Better — use a union type or enum:**
 ```typescript
-const notification = factory.create("emial", recipient); // Typo! Fails at runtime
-```
-
-**Better - Use enums or constants:**
-```typescript
-enum NotificationType {
-  Email = "email",
-  SMS = "sms",
-  Push = "push"
-}
+type NotificationType = "email" | "sms" | "push";
 
 class NotificationFactory {
-  create(type: NotificationType, recipient: string): Notification {
+  create(type: NotificationType): Notification {
     switch (type) {
-      case NotificationType.Email: return new EmailNotification(recipient);
-      case NotificationType.SMS:   return new SMSNotification(recipient);
-      case NotificationType.Push:  return new PushNotification(recipient);
+      case "email": return new EmailNotification();
+      case "sms":   return new SMSNotification();
+      case "push":  return new PushNotification();
     }
   }
 }
 
-// Now typos are caught at compile time!
-const notification = factory.create(NotificationType.Email, recipient);
+const n = factory.create("emial"); // Compile error! TypeScript catches it
 ```
 
+### 3. Null-Returning Factory — Returning null on failure
+
+When a factory cannot create an object, returning `null` hides the error. The caller must check for `null` every time. When they forget, the error appears far from the real problem. This is called the **Null-Returning Factory** anti-pattern.
+
+**Bad — returns null silently:**
+```typescript
+class NotificationFactory {
+  create(type: string): Notification | null {
+    if (type === "email") return new EmailNotification();
+    if (type === "sms")   return new SMSNotification();
+    return null; // Unknown type? Silent null.
+  }
+}
+
+const notification = factory.create(config.type);
+notification.send("Hello"); // TypeError: Cannot read properties of null
+```
+
+**Better — throw a clear error:**
+```typescript
+class NotificationFactory {
+  create(type: NotificationType): Notification {
+    switch (type) {
+      case "email": return new EmailNotification();
+      case "sms":   return new SMSNotification();
+    }
+    throw new Error(
+      `Unknown notification type: "${type}". Valid types: email, sms`
+    );
+  }
+}
+```
+
+### 4. God Factory — One factory creates everything
+
+A factory should create objects from **one domain** (one related group). When a single factory creates objects from many unrelated domains, it becomes a "God Factory." It grows without limit and everyone must edit the same file.
+
+**Bad — creates everything:**
+```typescript
+class AppFactory {
+  createUser(name: string): User { return new User(name); }
+  createInvoice(amount: number): Invoice { return new Invoice(amount); }
+  createLogger(level: string): Logger { return new ConsoleLogger(level); }
+  createPdfReport(data: ReportData): PdfReport { return new PdfReport(data); }
+  // ... 20 more unrelated methods
+}
+```
+
+**Better — one factory per domain:**
+```typescript
+class NotificationFactory {
+  create(type: NotificationType): Notification { /* ... */ }
+}
+
+class ReportFactory {
+  create(format: ReportFormat): Report { /* ... */ }
+}
+```
+
+### 5. Speculative Factory — Factory for a single type
+
+Don't create a factory when you only have **one** class. This is called **Speculative Generality** — adding complexity for a future that may never come. Use a factory when you have **multiple classes** that share an interface.
+
+**Bad — factory for one class:**
+```typescript
+class UserFactory {
+  create(name: string): User {
+    return new User(name); // Only one type. Why the factory?
+  }
+}
+
+const user = new UserFactory().create("Alice");
+```
+
+**Better — just use `new`:**
+```typescript
+const user = new User("Alice");
+
+// Add a factory LATER, when you actually need multiple types.
+```
 ---
 
 ## Factory vs Constructor

@@ -492,68 +492,202 @@ You can switch the chef anytime. The restaurant doesn't need to change how it ta
 
 ---
 
-## Common Mistakes
+## Anti-patterns
 
-### Mistake 1: Using Strategy when a simple function would do
+### 1. Golden Hammer — Using Strategy when a function is enough
 
-**Overkill:**
+The Strategy pattern uses classes and interfaces. But if your "strategy" is just a one-line function with no state (no data stored inside), a class is too much. TypeScript has first-class functions — use them.
+
+**Bad — full class for a one-liner:**
 ```typescript
-// If you only have one method and no state, just use a function!
-interface Validator {
-  validate(input: string): boolean;
+interface TextTransform {
+  transform(text: string): string;
 }
 
-class EmailValidator implements Validator {
-  validate(input: string) { return input.includes("@"); }
+class UpperCaseStrategy implements TextTransform {
+  transform(text: string): string {
+    return text.toUpperCase();
+  }
 }
-```
 
-**Simpler:**
-```typescript
-// A function is fine here
-type ValidatorFn = (input: string) => boolean;
-
-const emailValidator: ValidatorFn = (input) => input.includes("@");
-const phoneValidator: ValidatorFn = (input) => /^\d{10}$/.test(input);
-```
-
-### Mistake 2: Too many strategies that are almost identical
-
-**Smelly:**
-```typescript
-class SortAscending implements SortStrategy { /* ... */ }
-class SortDescending implements SortStrategy { /* ... */ }
-// These only differ by one comparison - parameterize instead!
-```
-
-**Better:**
-```typescript
-class SortStrategy {
-  constructor(private direction: "asc" | "desc") {}
-  sort(data: number[]) {
-    return this.direction === "asc"
-      ? data.sort((a, b) => a - b)
-      : data.sort((a, b) => b - a);
+class LowerCaseStrategy implements TextTransform {
+  transform(text: string): string {
+    return text.toLowerCase();
   }
 }
 ```
 
-### Mistake 3: Client needs to know all strategy details
-
-**Bad - client must understand strategy internals:**
+**Better — use a function type:**
 ```typescript
-const strategy = new FastestRoute();
-strategy.setTollPreference(true);  // Client knows too much
-strategy.setAvoidHighways(false);  // about strategy internals
-navigator.setStrategy(strategy);
+type TextTransform = (text: string) => string;
+
+const upper: TextTransform = (t) => t.toUpperCase();
+const lower: TextTransform = (t) => t.toLowerCase();
+
+// Usage
+function processText(text: string, transform: TextTransform): string {
+  return transform(text);
+}
+
+processText("hello", upper); // "HELLO"
 ```
 
-**Better - configure through constructor or simple options:**
+**Rule of thumb:** If your strategy has one method and no state, use a function.
+
+### 2. Strategy Explosion — Too many classes that differ by a parameter
+
+If strategies only differ by a **value** (not by logic), don't make a new class for each value. Use a parameter instead. This is called **class explosion** — too many classes for no reason.
+
+**Bad — 6 classes for one difference:**
 ```typescript
-const strategy = new FastestRoute({ avoidTolls: false });
-navigator.setStrategy(strategy);
+class SortByNameAsc implements SortStrategy { /* ... */ }
+class SortByNameDesc implements SortStrategy { /* ... */ }
+class SortByPriceAsc implements SortStrategy { /* ... */ }
+class SortByPriceDesc implements SortStrategy { /* ... */ }
+// Keeps growing...
 ```
 
+**Better — one class with parameters:**
+```typescript
+class SortStrategy {
+  constructor(
+    private field: "name" | "price",
+    private direction: "asc" | "desc"
+  ) {}
+
+  sort(data: Product[]): Product[] {
+    const modifier = this.direction === "asc" ? 1 : -1;
+    return [...data].sort((a, b) => {
+      return modifier * (a[this.field] > b[this.field] ? 1 : -1);
+    });
+  }
+}
+
+// 1 class covers all combinations
+const sorter = new SortStrategy("price", "desc");
+```
+
+Ask: "Do these strategies have different **logic**, or just different **values**?" If the logic is the same, use parameters.
+
+### 3. Fat Strategy Interface — Too many methods
+
+When a strategy interface has many methods, some strategies cannot do all of them. They must throw errors or return empty values. This violates the **Interface Segregation Principle** (ISP) — a SOLID rule that says: keep interfaces small and focused.
+
+**Bad — CashPayment cannot do most of these:**
+```typescript
+interface PaymentStrategy {
+  pay(amount: number): boolean;
+  refund(transactionId: string): boolean;
+  getStatement(month: number): string;
+  enrollRewards(userId: string): void;
+}
+
+class CashPayment implements PaymentStrategy {
+  pay(amount: number) { return true; }
+  refund(id: string) { throw new Error("Cash cannot refund"); }
+  getStatement(m: number) { throw new Error("No statements"); }
+  enrollRewards(id: string) { throw new Error("No rewards"); }
+}
+```
+
+**Better — split into small interfaces:**
+```typescript
+interface PaymentStrategy {
+  pay(amount: number): boolean;
+}
+
+interface Refundable {
+  refund(transactionId: string): boolean;
+}
+
+// CreditCard supports both
+class CreditCardPayment implements PaymentStrategy, Refundable {
+  pay(amount: number) { return true; }
+  refund(transactionId: string) { return true; }
+}
+
+// Cash only supports pay — no need to implement refund
+class CashPayment implements PaymentStrategy {
+  pay(amount: number) { return true; }
+}
+```
+
+### 4. Context-Coupled Strategy — Strategy depends on the Context
+
+A strategy should receive only the **data it needs**, not the entire Context object. When a strategy takes the whole Context, it becomes tightly coupled (strongly connected) to the Context's structure. The GoF book warns: "if the context object is passed to the strategy, we have a tighter coupling."
+
+**Bad — strategy reaches into Context internals:**
+```typescript
+interface PricingStrategy {
+  calculate(cart: ShoppingCart): number;
+}
+
+class LoyaltyPricing implements PricingStrategy {
+  calculate(cart: ShoppingCart): number {
+    const total = cart.getTotal();
+    if (cart.user.loyaltyTier === "gold") { // Reaches deep inside
+      return total * 0.8;
+    }
+    return total;
+  }
+}
+```
+
+**Better — pass only the data the strategy needs:**
+```typescript
+interface PricingInput {
+  subtotal: number;
+  loyaltyTier: string;
+}
+
+interface PricingStrategy {
+  calculate(input: PricingInput): number;
+}
+
+class LoyaltyPricing implements PricingStrategy {
+  calculate(input: PricingInput): number {
+    if (input.loyaltyTier === "gold") {
+      return input.subtotal * 0.8;
+    }
+    return input.subtotal;
+  }
+}
+```
+
+Now the strategy is easy to test and reuse in other places.
+
+### 5. Speculative Generality — Creating a Strategy "just in case"
+
+Don't create a strategy interface when you only have **one** implementation. This is called **Speculative Generality** — a code smell named by Martin Fowler. It means writing code for a future that may never come.
+
+**Bad — only one strategy exists:**
+```typescript
+interface MessageFormatter {
+  format(text: string): string;
+}
+
+class PlainTextFormatter implements MessageFormatter {
+  format(text: string): string {
+    return text; // The ONLY formatter. Why the interface?
+  }
+}
+
+class MessageService {
+  constructor(private formatter: MessageFormatter) {}
+  send(text: string) { console.log(this.formatter.format(text)); }
+}
+```
+
+**Better — keep it simple until you need more:**
+```typescript
+class MessageService {
+  send(text: string) {
+    console.log(text);
+  }
+}
+
+// When you ACTUALLY need a second formatter, THEN add the interface.
+```
 ---
 
 ## Alternative: Without the Context Class

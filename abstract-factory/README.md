@@ -550,13 +550,14 @@ Here is the simple summary:
 
 ---
 
-## Common Mistakes
+## Anti-patterns
 
-### Mistake 1: Using Abstract Factory when Factory is enough
+### 1. Speculative Generality — Using Abstract Factory when Factory is enough
 
-**Overkill:**
+Abstract Factory is for creating **families of related objects** (multiple types that must work together). If you only create **one type**, use a simple Factory. Don't use Abstract Factory "just in case."
+
+**Bad — Abstract Factory for one product type:**
 ```typescript
-// You only have ONE product type - just use Factory!
 interface NotificationFactory {
   createNotification(): Notification;
 }
@@ -564,9 +565,10 @@ interface NotificationFactory {
 class EmailNotificationFactory implements NotificationFactory {
   createNotification() { return new EmailNotification(); }
 }
+// Only one create method → simple Factory is enough.
 ```
 
-**Use Abstract Factory when you have MULTIPLE related types:**
+**Use Abstract Factory when you have multiple related types:**
 ```typescript
 interface UIFactory {
   createButton(): Button;      // Multiple types
@@ -575,30 +577,37 @@ interface UIFactory {
 }
 ```
 
-### Mistake 2: Products that don't need to match
+### 2. Unrelated Product Family — Products that don't need to match
 
-**Wrong use case:**
+Abstract Factory keeps products **consistent** (all from the same family). If your products don't need to match each other, they are not a family. Use separate simple factories instead.
+
+**Bad — these products are not related:**
 ```typescript
-// These don't need to "match" - wrong pattern!
-interface RandomFactory {
+interface AppFactory {
   createLogger(): Logger;
   createCache(): Cache;
   createValidator(): Validator;
 }
+// A Redis cache works fine with any logger.
+// They don't need to "match."
 ```
 
-**Right use case:**
+**Better — only group products that must be consistent:**
 ```typescript
-// These MUST match to look correct together
 interface UIFactory {
-  createButton(): Button;   // Must be same style
-  createCheckbox(): Checkbox; // Must be same style
+  createButton(): Button;
+  createCheckbox(): Checkbox;
 }
+// Button and Checkbox MUST match — both Windows or both Mac.
 ```
 
-### Mistake 3: Too many products in one factory
+Ask yourself: "Would mixing products from different factories cause a bug?" If the answer is no, Abstract Factory is the wrong choice.
 
-**Too complex:**
+### 3. Bloated Factory Interface — Too many create methods
+
+When a factory interface has too many methods, every concrete factory must implement all of them. This makes adding new factories very hard. The GoF book calls this a key trade-off of the pattern.
+
+**Bad — too many methods:**
 ```typescript
 interface UIFactory {
   createButton(): Button;
@@ -610,21 +619,16 @@ interface UIFactory {
   createColorPicker(): ColorPicker;
   createModal(): Modal;
   createToast(): Toast;
-  // ... 20 more methods
+  // Every concrete factory must implement ALL 9 methods.
 }
 ```
 
-**Better - split into focused factories:**
+**Better — split into smaller, focused factories:**
 ```typescript
 interface FormControlFactory {
   createButton(): Button;
   createCheckbox(): Checkbox;
   createInput(): TextInput;
-}
-
-interface PickerFactory {
-  createDatePicker(): DatePicker;
-  createColorPicker(): ColorPicker;
 }
 
 interface FeedbackFactory {
@@ -633,6 +637,33 @@ interface FeedbackFactory {
 }
 ```
 
+### 4. Shotgun Surgery — Adding a new product breaks all factories
+
+This is a known trade-off of Abstract Factory (documented in the GoF book). When you add a new product type to the interface, **every** concrete factory must be updated. This is called **Shotgun Surgery** — one change requires edits in many files.
+
+**Example — adding `createSlider()` to UIFactory:**
+```typescript
+interface UIFactory {
+  createButton(): Button;
+  createCheckbox(): Checkbox;
+  createSlider(): Slider; // NEW — every factory must add this
+}
+
+class WindowsUIFactory implements UIFactory {
+  createButton() { return new WindowsButton(); }
+  createCheckbox() { return new WindowsCheckbox(); }
+  createSlider() { return new WindowsSlider(); } // Must add
+}
+
+class MacUIFactory implements UIFactory {
+  createButton() { return new MacButton(); }
+  createCheckbox() { return new MacCheckbox(); }
+  createSlider() { return new MacSlider(); } // Must add
+}
+// If you have 5 factories, you edit 5 files.
+```
+
+This is not a "mistake" — it is a **trade-off** of the pattern. Before using Abstract Factory, ask: "Will I add new product types often?" If yes, this pattern may not be the best choice.
 ---
 
 ## When to Use Abstract Factory?

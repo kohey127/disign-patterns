@@ -433,31 +433,37 @@ Restaurant gets an order
 
 ---
 
-## Common Mistakes
+## Anti-patterns
 
-### Mistake 1: Forgetting to leave (Memory Leak)
+### 1. Lapsed Listener — Forgetting to unsubscribe (memory leak)
+
+When an observer joins a channel but never leaves, the channel keeps a reference (a link) to it forever. Even after the observer is no longer needed, the garbage collector (the system that frees memory) cannot remove it. This is called the **Lapsed Listener Problem** — a well-known cause of memory leaks in Observer implementations.
 
 **Bad:**
 ```typescript
 class NotificationService implements Observer {
   constructor(channel: SlackChannel) {
-    channel.join(this); // join...
+    channel.join(this); // Joins... but never leaves
   }
+
+  getName() { return "NotificationService"; }
 
   onMessage(message: SlackMessage) {
     console.log(`Notification: ${message.text}`);
   }
-  // Never leaves! Even after the service is destroyed,
-  // the channel still holds a reference → memory leak
+  // When this object is no longer used, the channel STILL holds
+  // a reference to it → memory leak
 }
 ```
 
-**Better:**
+**Better — always provide a way to clean up:**
 ```typescript
 class NotificationService implements Observer {
   constructor(private channel: SlackChannel) {
     channel.join(this);
   }
+
+  getName() { return "NotificationService"; }
 
   onMessage(message: SlackMessage) {
     console.log(`Notification: ${message.text}`);
@@ -469,51 +475,130 @@ class NotificationService implements Observer {
 }
 ```
 
-### Mistake 2: Changing the observer list during notification
+### 2. Notification Storm — Infinite loop from recursive notify
 
-Don't call `join()` or `leave()` inside `onMessage()`. The Subject is looping through the observer list. If you change the list during the loop, observers can be skipped or cause errors.
-
-**Bad:**
-```typescript
-class LeavingObserver implements Observer {
-  onMessage(message: SlackMessage) {
-    channel.leave(this); // The observer list changes while looping → bug
-  }
-}
-```
-
-### Mistake 3: Calling postMessage inside onMessage (infinite loop)
-
-`onMessage` is called by `postMessage`. If `onMessage` calls `postMessage` again, it triggers `onMessage` again, which calls `postMessage` again... forever.
+If an observer calls `postMessage()` inside `onMessage()`, it triggers a new notification, which calls `onMessage()` again, which calls `postMessage()` again... forever. This is an **infinite loop** and will crash your program.
 
 **Bad:**
 ```typescript
 class ReplyBot implements Observer {
+  getName() { return "ReplyBot"; }
+
   onMessage(message: SlackMessage) {
-    channel.postMessage("Bot", "Response");
-    // postMessage → onMessage → postMessage → onMessage → never stops
+    // postMessage → onMessage → postMessage → onMessage → never stops!
+    channel.postMessage("Bot", "Got your message!");
   }
 }
 ```
 
-### Mistake 4: Too many fine-grained notifications
+**Better — use a guard to prevent recursion:**
+```typescript
+class ReplyBot implements Observer {
+  private isReplying = false;
+
+  getName() { return "ReplyBot"; }
+
+  onMessage(message: SlackMessage) {
+    if (this.isReplying) return;          // Stop the loop
+    if (message.sender === "ReplyBot") return; // Don't reply to yourself
+
+    this.isReplying = true;
+    channel.postMessage("ReplyBot", "Got your message!");
+    this.isReplying = false;
+  }
+}
+```
+
+### 3. Observer List Mutation — Changing the list during notification
+
+When the Subject calls `notifyAll()`, it loops through its observer list. If an observer calls `join()` or `leave()` inside `onMessage()`, the list changes **during the loop**. This can skip observers or cause errors.
 
 **Bad:**
 ```typescript
-// Notifying on every tiny change
-user.setName("Alice");    // notify!
-user.setAge(25);          // notify!
-user.setEmail("a@b.com"); // notify!
-// 3 notifications for what should be 1 update
+class LeavingObserver implements Observer {
+  getName() { return "LeavingObserver"; }
+
+  onMessage(message: SlackMessage) {
+    channel.leave(this); // List changes while looping → bug
+  }
+}
 ```
 
-**Better:**
+**Better — copy the list before looping:**
 ```typescript
-// Batch updates, then notify once
-user.update({ name: "Alice", age: 25, email: "a@b.com" });
-// 1 notification
+class SlackChannel implements Subject {
+  notifyAll(message: SlackMessage): void {
+    // Copy the list first. Changes to the original won't affect the loop.
+    const snapshot = [...this.observers];
+    for (const observer of snapshot) {
+      observer.onMessage(message);
+    }
+  }
+}
 ```
 
+### 4. Chatty Subject — Too many fine-grained notifications
+
+If the Subject sends a notification for every tiny change, observers get too many updates. This hurts performance and causes unnecessary work. Send **one** notification after all changes are done.
+
+**Bad — 3 notifications for 1 logical change:**
+```typescript
+user.setName("Alice");    // notifyAll()!
+user.setAge(25);          // notifyAll()!
+user.setEmail("a@b.com"); // notifyAll()!
+// Observers run 3 times for what should be 1 update.
+```
+
+**Better — batch changes, then notify once:**
+```typescript
+user.update({ name: "Alice", age: 25, email: "a@b.com" });
+// notifyAll() called once after all changes are done.
+```
+
+### 5. Heavy Callback — Observer does too much in onMessage
+
+`onMessage()` runs inside the Subject's `notifyAll()` loop. If one observer does slow work (database writes, API calls), it **blocks** all other observers from getting notified. The Subject freezes until the slow observer finishes.
+
+**Bad — observer does slow work:**
+```typescript
+class DatabaseLogger implements Observer {
+  getName() { return "DatabaseLogger"; }
+
+  onMessage(message: SlackMessage) {
+    // This takes 500ms. All other observers must wait.
+    database.insert({
+      channel: message.channelName,
+      sender: message.sender,
+      text: message.text,
+    });
+  }
+}
+```
+
+**Better — keep onMessage fast, do slow work later:**
+```typescript
+class DatabaseLogger implements Observer {
+  private queue: SlackMessage[] = [];
+
+  getName() { return "DatabaseLogger"; }
+
+  onMessage(message: SlackMessage) {
+    this.queue.push(message); // Fast: just add to queue
+  }
+
+  // Process the queue separately (e.g., on a timer)
+  flush() {
+    for (const msg of this.queue) {
+      database.insert({
+        channel: msg.channelName,
+        sender: msg.sender,
+        text: msg.text,
+      });
+    }
+    this.queue = [];
+  }
+}
+```
 ---
 
 ## When to Use Observer?
