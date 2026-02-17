@@ -57,6 +57,7 @@ When studying, you can ask Claude:
 | Strategy | Behavioral | ✅ Complete |
 | Observer | Behavioral | ✅ Complete |
 | Decorator | Structural | ✅ Complete |
+| Adapter | Structural | ✅ Complete |
 
 ## Learning Tips
 

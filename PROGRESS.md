@@ -20,13 +20,20 @@
 | Abstract Factory | Creational | Done | - | - | - |
 | Strategy | Behavioral | Done | - | - | - |
 | Observer | Behavioral | Done | Done | Done | Done |
-| Decorator | Structural | Done | Done | Done | - |
+| Decorator | Structural | Done | Done | Done | Done |
+| Adapter | Structural | Done | Done | Done | - |
 
 > ステータス: `Done` / `In Progress` / `-`（未着手）
 
 ---
 
 ## 学習ログ
+
+### 2026-02-17
+- Adapter パターンの README・コード・デモを追加（決済システムの例）
+- Adapter パターンのステップ1〜3完了（日本語理解→自分の言葉で整理→YouTube撮影）
+- YouTube へのアップロードまで完了
+- Strategy との違い、「リファクタすればいいのでは？」「Adapter 自体がアンチパターンでは？」等を深掘り
 
 ### 2026-02-16
 - Strategy・Observer のアンチパターンを日本語で理解（行動ミッション形式）
