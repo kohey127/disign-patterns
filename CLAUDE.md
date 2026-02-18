@@ -58,6 +58,7 @@ When studying, you can ask Claude:
 | Observer | Behavioral | ✅ Complete |
 | Decorator | Structural | ✅ Complete |
 | Adapter | Structural | ✅ Complete |
+| Facade | Structural | ✅ Complete |
 
 ## Learning Tips
 

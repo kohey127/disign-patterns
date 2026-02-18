@@ -22,12 +22,20 @@
 | Observer | Behavioral | Done | Done | Done | Done |
 | Decorator | Structural | Done | Done | Done | Done |
 | Adapter | Structural | Done | Done | Done | - |
+| Facade | Structural | Done | Done | Done | - |
 
 > ステータス: `Done` / `In Progress` / `-`（未着手）
 
 ---
 
 ## 学習ログ
+
+### 2026-02-19
+- Facade パターンの README・コード・デモを追加（ホームシアターの例）
+- Facade パターンのステップ1〜3完了（日本語理解→自分の言葉で整理→YouTube撮影）
+- YouTube へのアップロードまで完了
+- 「ホテルのフロント」のアナロジーが不適切（判断を含む）→「TVリモコンの映画ボタン」に修正
+- 「関数でよくない？」問題を深掘り → Facade の本当の使い所はモジュールの境界（他の人が使う入口）
 
 ### 2026-02-17
 - Adapter パターンの README・コード・デモを追加（決済システムの例）
