@@ -13,22 +13,36 @@
 
 ## 進捗一覧
 
-| パターン | カテゴリ | 1. 日本語理解 | 2. 自分の言葉で整理 | 3. YouTube撮影 | 4. 英語で読み直し |
-|----------|----------|:---:|:---:|:---:|:---:|
-| Singleton | Creational | Done | - | - | - |
-| Factory | Creational | Done | - | - | - |
-| Abstract Factory | Creational | Done | - | - | - |
-| Strategy | Behavioral | Done | - | - | - |
-| Observer | Behavioral | Done | Done | Done | Done |
-| Decorator | Structural | Done | Done | Done | Done |
-| Adapter | Structural | Done | Done | Done | - |
-| Facade | Structural | Done | Done | Done | - |
+| # | パターン | カテゴリ | 1. 日本語理解 | 2. 自分の言葉で整理 | 3. YouTube撮影 | 4. 英語で読み直し |
+|---|----------|----------|:---:|:---:|:---:|:---:|
+| 01 | Singleton | Creational | Done | - | - | - |
+| 02 | Factory | Creational | Done | - | - | - |
+| 03 | Abstract Factory | Creational | Done | - | - | - |
+| 04 | Strategy | Behavioral | Done | - | - | - |
+| 05 | Observer | Behavioral | Done | Done | Done | Done |
+| 06 | Decorator | Structural | Done | Done | Done | Done |
+| 07 | Adapter | Structural | Done | Done | Done | - |
+| 08 | Facade | Structural | Done | Done | Done | - |
+| 09 | Template Method | Behavioral | Done | - | - | - |
+| 10 | Command | Behavioral | - | - | - | - |
+| 11 | State | Behavioral | - | - | - | - |
+| 12 | Builder | Creational | - | - | - | - |
+| 13 | Composite | Structural | - | - | - | - |
+| 14 | Proxy | Structural | - | - | - | - |
 
 > ステータス: `Done` / `In Progress` / `-`（未着手）
 
 ---
 
 ## 学習ログ
+
+### 2026-02-20
+- Template Method パターンの README・コード・デモを追加（ホットドリンクの例）
+- Template Method パターンのステップ1完了（日本語理解）
+- Strategy との比較を重点的に整理（inheritance vs composition）
+- Hook メソッドの実用性を議論 → 実務ではコンストラクタ引数の方が明示的でおすすめという結論
+- typescript-basics.md に abstract の解説を追加
+- CLAUDE.md にコードスニペットの重複排除ルール（ルール8）を追加
 
 ### 2026-02-18
 - Facade パターンの README・コード・デモを追加（ホームシアターの例）
@@ -55,7 +69,7 @@
 - `Subscriber.ts` を `ConcreteObservers.ts` にリネーム（ファイル名をより明確に）
 - Decorator パターンの README・コード・デモを追加（初の Structural パターン）
 
-### 2025-02-13
+### 2026-02-13
 - Observer パターンの「何が嬉しいか」をClaudeと確認
 - 学習フローの見直し：英語とデザインパターンの学習を分離する方針に決定
 - YouTube撮影の進め方を検討（画面収録 + 声、5〜10分、無編集でOK）
@@ -65,6 +79,30 @@
   - Common Mistakes を分割（observer リスト変更の問題と無限ループの問題を別々に解説）
 - CLAUDE.md にコードスニペットの品質ルール・ライティングスタイルルールを追加
 - Observer パターンの深掘り：Subject/Observer の英語の意味、Hollywood Principle、onMessage の呼ばれるタイミング、constructor の使い分け、無限ループの仕組み
+
+> ⚠️ 以下のログはリアルタイム記録ではなく、gitコミット履歴から復元したもの
+
+### 2026-02-12
+- Observer パターンの README を更新（メッセージングアプリの例に変更）
+
+### 2026-02-10
+- Observer パターンの README・コードを追加
+- Strategy パターンに Context クラスなしの使い方セクションを追加
+
+### 2026-02-09
+- Strategy パターンの README・コードを追加
+- TypeScript 基礎メモ（static, public, private, constructors）を作成
+- Abstract Factory の import 修正
+
+### 2026-02-07
+- Abstract Factory パターンの README・コードを追加
+
+### 2026-02-06
+- Factory パターンの README・コードを追加
+
+### 2026-02-04
+- リポジトリ作成
+- Singleton パターンの README・コードを追加
 
 ---
 

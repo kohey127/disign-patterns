@@ -59,7 +59,7 @@ When studying, you can ask Claude:
 | 06 | Decorator | Structural | ✅ Complete |
 | 07 | Adapter | Structural | ✅ Complete |
 | 08 | Facade | Structural | ✅ Complete |
-| 09 | Template Method | Behavioral | 📋 Planned |
+| 09 | Template Method | Behavioral | ✅ Complete |
 | 10 | Command | Behavioral | 📋 Planned |
 | 11 | State | Behavioral | 📋 Planned |
 | 12 | Builder | Creational | 📋 Planned |
@@ -107,6 +107,7 @@ All code snippets in README files must follow these rules to minimize cognitive 
 5. **Self-contained snippets** — Each code block should either be fully runnable on its own, or explicitly continue from the immediately preceding block.
 6. **implements must be real** — If a class does `channel.join(this)`, it must `implements Observer` and have the required methods.
 7. **Show usage with definition** — Don't show a class definition without showing how it gets called. Definition alone doesn't explain when/why the code runs.
+8. **No unnecessary repetition across sections** — When Step N builds on Step N-1, write `// Continues from above` and show only the new code. Do NOT copy the entire previous snippet. The only exception is the "Complete Example" section, which serves as a single runnable reference.
 
 ## Adding New Patterns
 

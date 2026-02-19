@@ -117,3 +117,112 @@ const user = new User("田中", 15);
 - **パターン3**（引数で宣言）→ 外から値を渡すクラス（User等）に便利
 
 MinStack なら パターン1 か パターン2 がおすすめ。
+
+---
+
+## abstract（抽象クラス・抽象メソッド）
+
+### ■ 一言で
+
+`abstract` = **「設計図だけ。そのままでは使えない」**
+
+### ■ abstract class（抽象クラス）
+
+`new` できないクラス。必ず `extends` して使う。
+
+```typescript
+abstract class Animal {
+  // 普通のメソッド（中身あり）→ 子クラスでそのまま使える
+  breathe(): void {
+    console.log("呼吸する");
+  }
+
+  // abstract メソッド（中身なし）→ 子クラスが必ず書く
+  abstract speak(): void;
+}
+
+// NG: abstract クラスは直接 new できない
+const a = new Animal(); // ← エラー！
+
+// OK: extends して abstract メソッドを実装する
+class Dog extends Animal {
+  speak(): void {
+    console.log("ワン！");
+  }
+}
+
+const dog = new Dog();
+dog.breathe(); // "呼吸する"  ← 親の普通メソッドはそのまま使える
+dog.speak();   // "ワン！"    ← 子が実装した abstract メソッド
+```
+
+### ■ abstract method（抽象メソッド）
+
+中身（`{ }`）を書かないメソッド。子クラスが**必ず**実装しないとエラーになる。
+
+```typescript
+abstract class Shape {
+  abstract area(): number;  // ← 中身なし。子クラスに任せる
+}
+
+class Circle extends Shape {
+  constructor(private radius: number) { super(); }
+
+  // area() を書かないとエラーになる
+  area(): number {
+    return Math.PI * this.radius * this.radius;
+  }
+}
+
+class Square extends Shape {
+  constructor(private side: number) { super(); }
+
+  area(): number {
+    return this.side * this.side;
+  }
+}
+
+const c = new Circle(5);
+console.log(c.area()); // 78.54...
+
+const s = new Square(4);
+console.log(s.area()); // 16
+```
+
+### ■ interface との違い
+
+どっちも「こういうメソッドを持て」というルールを決めるもの。でも役割が違う。
+
+| | `abstract class` | `interface` |
+|--|-----------------|-------------|
+| 中身のあるメソッドを持てる？ | はい（`breathe()` など） | いいえ（ルールだけ） |
+| プロパティに初期値を持てる？ | はい | いいえ |
+| 複数同時に使える？ | `extends` は1つだけ | `implements` は何個でもOK |
+| 用途 | 共通の処理 + 一部を子に任せる | 「この形を守れ」という契約 |
+
+```typescript
+// interface = 「この形を守れ」だけ
+interface Flyable {
+  fly(): void;
+}
+
+// abstract class = 共通処理あり + 一部だけ子に任せる
+abstract class Bird {
+  eat(): void { console.log("エサを食べる"); }  // 共通処理
+  abstract sing(): void;                         // 子に任せる
+}
+
+// 両方使える
+class Sparrow extends Bird implements Flyable {
+  sing(): void { console.log("チュンチュン"); }  // abstract を実装
+  fly(): void { console.log("パタパタ"); }       // interface を実装
+}
+```
+
+### ■ いつ使う？
+
+| やりたいこと | 使うもの |
+|-------------|---------|
+| 「この形を守れ」だけ決めたい | `interface` |
+| 共通処理を持ちつつ、一部を子クラスに任せたい | `abstract class` |
+| 手順の骨組みを固定して、中身だけ変えたい | `abstract class`（= Template Method パターン） |
