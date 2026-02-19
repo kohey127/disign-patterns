@@ -8,7 +8,7 @@ This repository is for learning design patterns in English with practical code e
 design-patterns/
 ├── CLAUDE.md           # This file - learning guide
 ├── README.md           # Repository overview
-└── [pattern-name]/     # Each pattern has its own folder
+└── [NN-pattern-name]/  # Each pattern has its own numbered folder
     ├── README.md       # English explanation (simple & clear)
     ├── code/           # TypeScript implementation files
     └── notes.md        # Japanese notes (optional)
@@ -49,16 +49,22 @@ When studying, you can ask Claude:
 
 ## Patterns Covered
 
-| Pattern | Category | Status |
-|---------|----------|--------|
-| Singleton | Creational | ✅ Complete |
-| Factory | Creational | ✅ Complete |
-| Abstract Factory | Creational | ✅ Complete |
-| Strategy | Behavioral | ✅ Complete |
-| Observer | Behavioral | ✅ Complete |
-| Decorator | Structural | ✅ Complete |
-| Adapter | Structural | ✅ Complete |
-| Facade | Structural | ✅ Complete |
+| # | Pattern | Category | Status |
+|---|---------|----------|--------|
+| 01 | Singleton | Creational | ✅ Complete |
+| 02 | Factory | Creational | ✅ Complete |
+| 03 | Abstract Factory | Creational | ✅ Complete |
+| 04 | Strategy | Behavioral | ✅ Complete |
+| 05 | Observer | Behavioral | ✅ Complete |
+| 06 | Decorator | Structural | ✅ Complete |
+| 07 | Adapter | Structural | ✅ Complete |
+| 08 | Facade | Structural | ✅ Complete |
+| 09 | Template Method | Behavioral | 📋 Planned |
+| 10 | Command | Behavioral | 📋 Planned |
+| 11 | State | Behavioral | 📋 Planned |
+| 12 | Builder | Creational | 📋 Planned |
+| 13 | Composite | Structural | 📋 Planned |
+| 14 | Proxy | Structural | 📋 Planned |
 
 ## Learning Tips
 
